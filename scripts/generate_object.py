@@ -2,8 +2,9 @@
 """IIJ object: generates assets/iij.stl and embeds it in README.md.
 
 GitHub renders a fenced stl block as an interactive 3D viewer. The wordmark is a
-closed, printable solid. Stems keep the 1:2:3 widths and rise in 1:2:3 heights;
-the foot of the second I is the tallest pin. Standard library only.
+set of closed, printable solids standing on GitHub's grid. Stems keep the 1:2:3
+widths and step forward in 1:2:3 depths; the foot of the second I is the deepest
+pin. Standard library only.
 """
 import math
 from pathlib import Path
@@ -12,8 +13,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 MARK_H = 328
 UNIT, GAP, FOOT = 34, 12, 46
-BASE, MARGIN = 12, 24
-RISE = 26       # height added per stem
+RISE = 30       # depth added per stem
 CHAMFER = 2.5
 ARC_STEPS = 18
 
@@ -133,13 +133,16 @@ def prism(poly, z0, z1, chamfer=CHAMFER):
     return tris
 
 
+def stand(point):
+    """Turn a part lying on its back upright, facing the viewer's default camera."""
+    x, y, z = point
+    return x, -z, y
+
+
 def solid():
     tris = []
-    width = 4 * UNIT + 2 * UNIT + 2 * GAP
-    plate = [(-MARGIN, -MARGIN), (width + MARGIN, -MARGIN), (width + MARGIN, MARK_H + MARGIN), (-MARGIN, MARK_H + MARGIN)]
-    tris += prism(plate, 0, BASE)
-    for poly, height in outlines():
-        tris += prism(poly, BASE - 1, BASE + height)
+    for poly, depth in outlines():
+        tris += [tuple(stand(p) for p in tri) for tri in prism(poly, 0, depth)]
     return tris
 
 
