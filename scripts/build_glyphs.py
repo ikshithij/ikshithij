@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Extract the few glyph outlines the label needs into scripts/glyphs.json.
+"""Extract the glyph outlines the board needs into scripts/glyphs.json.
 
-Only needed when the banner uses a character not yet in glyphs.json, so normal
-regeneration stays dependency-free. Requires fontTools and two font files, both
-licensed under the SIL Open Font License 1.1:
+Only needed when the text gains a new character. Requires fontTools and Inter
+Tight Medium, licensed under the SIL Open Font License 1.1:
 
-    python scripts/build_glyphs.py InterTight-SemiBold.woff IBMPlexMono-Medium.woff
+    python scripts/build_glyphs.py InterTight-Medium.woff
 """
 import json
 import sys
@@ -15,8 +14,7 @@ from fontTools.pens.basePen import decomposeQuadraticSegment
 from fontTools.pens.recordingPen import DecomposingRecordingPen
 from fontTools.ttLib import TTFont
 
-UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-SETS = {"display": UPPER + " .", "mono": UPPER + "0123456789 /.&—"}
+CHARS = "This profile the pubc tp of a fairly vate ceberg.Rv"
 
 
 def outline(font, name):
@@ -56,12 +54,7 @@ def extract(path, chars):
 
 
 def main():
-    display, mono = sys.argv[1:3]
-    data = {
-        "licence": "SIL Open Font License 1.1",
-        "display": extract(display, SETS["display"]),
-        "mono": extract(mono, SETS["mono"]),
-    }
+    data = {"licence": "SIL Open Font License 1.1", **extract(sys.argv[1], sorted(set(CHARS)))}
     target = Path(__file__).with_name("glyphs.json")
     target.write_text(json.dumps(data, separators=(",", ":")) + "\n")
 
