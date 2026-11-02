@@ -1,3 +1,5 @@
-<img src="assets/board.svg" width="100%" alt="Illustration of a black circuit board marked Rev infinity. A light comes on behind it and text glows through the copper.">
+<a href="https://ikshithij.github.io/ikshithij/"><img src="assets/iceberg.svg" width="100%" alt="An iceberg floating with one tenth of it above the water. Links to a game where you draw your own."></a>
 
 This profile is the public tip of a fairly private iceberg.
+
+[Draw an iceberg](https://ikshithij.github.io/ikshithij/)

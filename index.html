@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iceberg</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0E1418; color: #EDF2F0;
+    font: 500 16px/1.35 ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  .ui { position: fixed; pointer-events: none; }
+  #line { top: 24px; left: 24px; right: 24px; font-size: clamp(20px, 3.4vw, 34px); letter-spacing: -.01em; max-width: 24em; }
+  #read { top: calc(24px + clamp(64px, 9vw, 96px)); left: 24px; color: #9DB4BC; font-variant-numeric: tabular-nums; }
+  #foot { bottom: 16px; left: 24px; right: 24px; display: flex; justify-content: space-between; gap: 16px;
+    font-size: 13px; color: #9DB4BC; }
+  #foot a { color: inherit; pointer-events: auto; }
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Draw an iceberg and watch how it floats"></canvas>
+<div class="ui" id="line">This profile is the public tip of a fairly private iceberg.</div>
+<div class="ui" id="read">Draw an iceberg.</div>
+<div class="ui" id="foot">
+  <span>After <a href="https://joshdata.me/iceberger.html">Iceberger</a> by Josh Tauberer, for Megan Thompson-Munson.</span>
+  <span>Rev ∞</span>
+</div>
+<script>
+// physics:start
+const ICE = 0.9, GRAVITY = 900, DRAG = 1.1, SPIN_DRAG = 0.9;
+
+function area(p) {
+  let a = 0;
+  for (let i = 0; i < p.length; i++) {
+    const [x0, y0] = p[i], [x1, y1] = p[(i + 1) % p.length];
+    a += x0 * y1 - x1 * y0;
+  }
+  return a / 2;
+}
+
+function centroid(p) {
+  const a = area(p);
+  let cx = 0, cy = 0;
+  for (let i = 0; i < p.length; i++) {
+    const [x0, y0] = p[i], [x1, y1] = p[(i + 1) % p.length];
+    const c = x0 * y1 - x1 * y0;
+    cx += (x0 + x1) * c;
+    cy += (y0 + y1) * c;
+  }
+  return [cx / (6 * a), cy / (6 * a)];
+}
+
+// Second moment of area about the origin.
+function inertia(p) {
+  let sum = 0;
+  for (let i = 0; i < p.length; i++) {
+    const [x0, y0] = p[i], [x1, y1] = p[(i + 1) % p.length];
+    sum += (x0 * y1 - x1 * y0) * (x0 * x0 + x0 * x1 + x1 * x1 + y0 * y0 + y0 * y1 + y1 * y1);
+  }
+  return Math.abs(sum) / 12;
+}
+
+// Keep the part of a polygon below the waterline. Seams along the line cancel,
+// so area and centroid stay correct for concave shapes.
+function submerged(p, water) {
+  const out = [];
+  for (let i = 0; i < p.length; i++) {
+    const a = p[i], b = p[(i + 1) % p.length];
+    const aIn = a[1] >= water, bIn = b[1] >= water;
+    if (aIn) out.push(a);
+    if (aIn !== bIn) {
+      const t = (water - a[1]) / (b[1] - a[1]);
+      out.push([a[0] + (b[0] - a[0]) * t, water]);
+    }
+  }
+  return out;
+}
+
+function makeBody(points) {
+  let p = points.slice();
+  if (area(p) < 0) p.reverse();
+  const [cx, cy] = centroid(p);
+  const local = p.map(([x, y]) => [x - cx, y - cy]);
+  return { local, x: cx, y: cy, angle: 0, vy: 0, spin: 0,
+           size: Math.abs(area(local)), moment: inertia(local) };
+}
+
+function world(body) {
+  const c = Math.cos(body.angle), s = Math.sin(body.angle);
+  return body.local.map(([x, y]) => [body.x + x * c - y * s, body.y + x * s + y * c]);
+}
+
+function step(body, water, dt) {
+  const under = submerged(world(body), water);
+  let wet = 0, torque = 0;
+  if (under.length > 2) {
+    wet = Math.abs(area(under));
+    if (wet > 1e-6) {
+      const [wx] = centroid(under);
+      torque = -(wx - body.x) * wet * GRAVITY;
+    }
+  }
+  const mass = ICE * body.size;
+  const fraction = wet / body.size;
+  body.vy += (GRAVITY - wet * GRAVITY / mass) * dt;
+  body.spin += torque / (ICE * body.moment) * dt;
+  body.vy *= Math.exp(-(0.15 + DRAG * fraction * 2) * dt);
+  body.spin *= Math.exp(-(0.1 + SPIN_DRAG * fraction * 2) * dt);
+  body.y += body.vy * dt;
+  body.angle += body.spin * dt;
+  return 1 - fraction;
+}
+// physics:end
+
+const canvas = document.getElementById("c"), ctx = canvas.getContext("2d");
+const read = document.getElementById("read");
+const SKY = "#0E1418", SEA = "#163240", SEA_OVER = "rgba(22,50,64,.62)", BERG = "#EDF2F0";
+let w, h, water, body = null, stroke = null, above = 0, moved = 0;
+
+function resize() {
+  const ratio = devicePixelRatio || 1;
+  w = innerWidth; h = innerHeight; water = Math.round(h * 0.4);
+  canvas.width = w * ratio; canvas.height = h * ratio;
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+}
+addEventListener("resize", resize);
+resize();
+
+function seed() {
+  const r = Math.min(w, h) * 0.2, cx = w * 0.62, cy = water - r * 0.2;
+  const shape = [[-1.3, -.2], [-.8, -.95], [-.2, -.7], [.25, -1.25], [.75, -.55], [1.35, -.1],
+                 [1, .55], [.2, .85], [-.5, .6], [-1.05, .45]];
+  body = makeBody(shape.map(([x, y]) => [cx + x * r, cy + y * r]));
+  body.angle = 0.9;
+}
+seed();
+
+function pointer(e) { const b = canvas.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; }
+
+function inside(pt, poly) {
+  let hit = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) hit = !hit;
+  }
+  return hit;
+}
+
+canvas.addEventListener("pointerdown", e => {
+  canvas.setPointerCapture(e.pointerId);
+  stroke = [pointer(e)]; moved = 0;
+});
+canvas.addEventListener("pointermove", e => {
+  if (!stroke) return;
+  const pt = pointer(e), last = stroke[stroke.length - 1];
+  const gap = Math.hypot(pt[0] - last[0], pt[1] - last[1]);
+  moved += gap;
+  if (gap >= 5 && stroke.length < 500) stroke.push(pt);
+});
+canvas.addEventListener("pointerup", e => {
+  const pts = stroke; stroke = null;
+  if (!pts) return;
+  if (moved < 12) {
+    if (body && inside(pts[0], world(body))) body.spin += pts[0][0] < body.x ? -1.4 : 1.4;
+    return;
+  }
+  if (pts.length > 5 && Math.abs(area(pts)) > 900) body = makeBody(pts);
+});
+
+function outline(p) {
+  ctx.beginPath();
+  p.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+  ctx.closePath();
+}
+
+function frame() {
+  if (body) for (let i = 0; i < 6; i++) above = step(body, water, 1 / 360);
+  ctx.fillStyle = SKY; ctx.fillRect(0, 0, w, water);
+  ctx.fillStyle = SEA; ctx.fillRect(0, water, w, h - water);
+  if (body) {
+    outline(world(body)); ctx.fillStyle = BERG; ctx.fill();
+    ctx.fillStyle = SEA_OVER; ctx.fillRect(0, water, w, h - water);
+    read.textContent = `${Math.round(above * 100)}% above water`;
+  }
+  if (stroke) {
+    ctx.beginPath();
+    stroke.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y));
+    ctx.strokeStyle = BERG; ctx.lineWidth = 2; ctx.stroke();
+  }
+  requestAnimationFrame(frame);
+}
+frame();
+</script>
+</body>
+</html>

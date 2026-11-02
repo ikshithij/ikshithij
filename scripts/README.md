@@ -1,11 +1,10 @@
-# Board
+# Iceberg
 
-`assets/board.svg` is an illustration, to be replaced by a photograph of the real board.
+`index.html` is the game, served by GitHub Pages. It has no dependencies and no build step.
+`assets/iceberg.svg` is the profile image:
 
 ```sh
-python scripts/generate_board.py
+python scripts/generate_iceberg.py
 ```
 
-`generate_board.py` uses only the Python standard library and always writes identical output.
-`glyphs.json` holds Inter Tight Medium outlines (SIL Open Font License 1.1). `build_glyphs.py`
-rebuilds it with fontTools, only if the text gains a new character.
+The game follows Iceberger by Josh Tauberer, inspired by Megan Thompson-Munson. Its code here is original.

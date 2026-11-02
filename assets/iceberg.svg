@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="1200" height="400" role="img" aria-labelledby="t">
+<title id="t">An iceberg floating with one tenth of it above the water.</title>
+<style>@media (prefers-reduced-motion:no-preference){@keyframes r{0%,100%{transform:rotate(-2.2deg) translateY(-3px)}50%{transform:rotate(2.2deg) translateY(4px)}}.b{transform-box:fill-box;transform-origin:50% 45%;animation:r 9s ease-in-out infinite}}</style>
+<rect width="1200" height="400" fill="#0E1418"/>
+<rect y="104" width="1200" height="296" fill="#163240"/>
+<polygon class="b" fill="#EDF2F0" points="440,69.2 486,47.2 538,75.2 594,37.2 648,65.2 702,53.2 774,87.2 856,119.2 936,185.2 884,263.2 790,297.2 742,377.2 650,417.2 560,371.2 466,391.2 372,323.2 290,261.2 316,175.2 372,123.2"/>
+<rect y="104" width="1200" height="296" fill="#163240" opacity=".62"/>
+</svg>
